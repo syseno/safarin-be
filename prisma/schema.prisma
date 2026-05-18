@@ -1,0 +1,195 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ─── Enums ───────────────────────────────────────────────
+
+enum Role {
+  SUPER_ADMIN
+  MASJID_ADMIN
+  USER
+}
+
+enum FinanceType {
+  DEBIT   // income / kas masuk
+  CREDIT  // expense / kas keluar
+}
+
+enum InventoryCondition {
+  GOOD
+  DAMAGED
+  LOST
+}
+
+enum DonationType {
+  SADAQAH
+  INFAQ
+  ZAKAT
+}
+
+// ─── Models ──────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+  googleId  String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // A MASJID_ADMIN manages exactly one masjid
+  masjid Masjid?
+}
+
+model Masjid {
+  id          String   @id @default(uuid())
+  name        String
+  addressDetail String?
+  latitude    Float?
+  longitude   Float?
+  phone       String?
+  description String?
+  verified    Boolean  @default(false)
+  skDkmUrl    String?  // Private secure file path
+  imageUrl    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Location relations
+  countryId     String?
+  country       Country?     @relation(fields: [countryId], references: [id])
+  cityId        String?
+  city          City?        @relation(fields: [cityId], references: [id])
+  districtId    String?
+  district      District?    @relation(fields: [districtId], references: [id])
+  subDistrictId String?
+  subDistrict   SubDistrict? @relation(fields: [subDistrictId], references: [id])
+
+  // The admin (takmir) managing this masjid — one-to-one
+  adminId String @unique
+  admin   User   @relation(fields: [adminId], references: [id])
+
+  // Relations
+  finances    Finance[]
+  inventories Inventory[]
+  donations   Donation[]
+  events      Event[]
+}
+
+model Finance {
+  id          String      @id @default(uuid())
+  title       String
+  amount      Float
+  type        FinanceType
+  description String      // Required for audit trail
+  createdAt   DateTime    @default(now())
+
+  // Belongs to a masjid
+  masjidId String
+  masjid   Masjid @relation(fields: [masjidId], references: [id])
+
+  // Optional relation to inventory (for CREDIT / purchase)
+  inventoryId String?
+  inventory   Inventory? @relation(fields: [inventoryId], references: [id])
+
+  // Optional relation to donation (for DEBIT / income from donation)
+  donationId String?  @unique
+  donation   Donation? @relation(fields: [donationId], references: [id])
+
+  @@index([masjidId])
+  @@index([type])
+}
+
+model Inventory {
+  id        String             @id @default(uuid())
+  name      String
+  quantity  Int                @default(0)
+  condition InventoryCondition @default(GOOD)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  // Belongs to a masjid
+  masjidId String
+  masjid   Masjid @relation(fields: [masjidId], references: [id])
+
+  // Finance records linked to this inventory item
+  finances Finance[]
+
+  @@index([masjidId])
+}
+
+model Donation {
+  id          String       @id @default(uuid())
+  type        DonationType
+  amount      Float
+  description String
+  createdAt   DateTime     @default(now())
+
+  // Belongs to a masjid
+  masjidId String
+  masjid   Masjid @relation(fields: [masjidId], references: [id])
+
+  // Linked finance record (one-to-one)
+  finance Finance?
+
+  @@index([masjidId])
+  @@index([type])
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  date        DateTime
+  startTime   String   // e.g. "08:00"
+  endTime     String   // e.g. "12:00"
+  location    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Belongs to a masjid
+  masjidId String
+  masjid   Masjid @relation(fields: [masjidId], references: [id])
+
+  @@index([masjidId])
+}
+
+model Country {
+  id        String   @id @default(uuid())
+  name      String
+  cities    City[]
+  masjids   Masjid[]
+}
+
+model City {
+  id        String     @id @default(uuid())
+  name      String
+  countryId String
+  country   Country    @relation(fields: [countryId], references: [id])
+  districts District[]
+  masjids   Masjid[]
+}
+
+model District {
+  id           String        @id @default(uuid())
+  name         String
+  cityId       String
+  city         City          @relation(fields: [cityId], references: [id])
+  subDistricts SubDistrict[]
+  masjids      Masjid[]
+}
+
+model SubDistrict {
+  id         String   @id @default(uuid())
+  name       String
+  districtId String
+  district   District @relation(fields: [districtId], references: [id])
+  masjids    Masjid[]
+}
