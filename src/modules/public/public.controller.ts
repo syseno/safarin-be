@@ -6,6 +6,32 @@ export class PublicController {
   private readonly service = new PublicService();
 
   /**
+   * Get nearest verified masjids from user's location with computed distance.
+   */
+  getNearestMasjid = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const latitude = parseFloat(req.query.latitude as string);
+      const longitude = parseFloat(req.query.longitude as string);
+      const radius = req.query.radius ? parseFloat(req.query.radius as string) : undefined;
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const cityId = req.query.cityId as string || undefined;
+
+      if (isNaN(latitude) || isNaN(longitude)) {
+        res.status(400).json({
+          success: false,
+          message: 'Latitude and longitude query parameters are required and must be valid numbers.',
+        });
+        return;
+      }
+
+      const result = await this.service.getNearestMasjid(latitude, longitude, radius, limit, cityId);
+      sendSuccess(res, 'Nearest masjids retrieved successfully.', result);
+    } catch (err) {
+      next(err);
+    }
+  };
+
+  /**
    * Search verified masjid by name or address.
    */
   searchMasjid = async (req: Request, res: Response, next: NextFunction) => {

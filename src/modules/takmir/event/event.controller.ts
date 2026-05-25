@@ -42,7 +42,8 @@ export class EventController {
     try {
       const masjidId = req.params.masjidId as string;
       const id = req.params.id as string;
-      await this.service.deleteEvent(masjidId, id);
+      const deleteType = (req.query.deleteType as 'SINGLE' | 'ALL') || 'SINGLE';
+      await this.service.deleteEvent(masjidId, id, deleteType);
       sendSuccess(res, 'Event deleted successfully.');
     } catch (err) {
       next(err);

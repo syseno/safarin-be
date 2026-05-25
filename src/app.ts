@@ -45,8 +45,12 @@ app.use((_req, res) => {
 app.use(errorHandler);
 
 // ─── Start Server ───────────────────────────────────────────
-app.listen(config.port, () => {
-  logger.success(`🕌 Masjid Ecosystem API running on port ${config.port}`);
+const PORT = config.port;
+const HOST = '0.0.0.0';
+
+app.listen(PORT, HOST, () => {
+  logger.success(`🕌 Masjid Ecosystem API running on port ${PORT}`);
+  logger.info(`Local Network Access: http://192.168.1.3:${PORT}/api`);
   logger.info(`Environment: ${config.nodeEnv}`);
 });
 
